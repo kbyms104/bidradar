@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="light">
+<head>
+<meta charset="utf-8">
+<script>
+/* 진단용: 브라우저에서 난 오류를 서버 로그로 보냅니다. (개인정보 없음) */
+(function () {
+  function send(kind, data) {
+    try {
+      var body = { kind: kind, path: location.pathname, ref: document.referrer,
+                   ua: navigator.userAgent, extra: data || {} };
+      var json = JSON.stringify(body);
+      if (navigator.sendBeacon) {
+        navigator.sendBeacon('/api/clientlog', new Blob([json], { type: 'application/json' }));
+      } else {
+        fetch('/api/clientlog', { method: 'POST', body: json,
+          headers: { 'Content-Type': 'application/json' }, keepalive: true });
+      }
+    } catch (e) {}
+  }
+  window.__brlog = send;
+  window.addEventListener('error', function (e) {
+    if (e && e.message && /ResizeObserver/.test(e.message)) return;
+    send('error', {
+      message: (e && e.message) || 'unknown',
+      src: ((e && e.filename) || '') + ':' + ((e && e.lineno) || 0) + ':' + ((e && e.colno) || 0),
+      stack: (e && e.error && e.error.stack) ? String(e.error.stack).slice(0, 1500) : ''
+    });
+  }, true);
+  window.addEventListener('unhandledrejection', function (e) {
+    var r = e && e.reason;
+    send('rejection', {
+      message: (r && r.message) ? r.message : String(r),
+      stack: (r && r.stack) ? String(r.stack).slice(0, 1500) : ''
+    });
+  });
+  document.addEventListener('click', function (e) {
+    var a = e.target && e.target.closest ? e.target.closest('a[href="/demo"]') : null;
+    if (a) send('demo_click', { href: a.getAttribute('href'), text: (a.textContent || '').trim().slice(0, 40) });
+  }, true);
+  window.addEventListener('load', function () {
+    var storage = 'ok';
+    try { localStorage.setItem('__brt', '1'); localStorage.removeItem('__brt'); }
+    catch (err) { storage = 'blocked:' + ((err && err.name) || 'error'); }
+    send('hello', {
+      storage: storage,
+      vw: window.innerWidth, dpr: window.devicePixelRatio,
+      lang: navigator.language, online: navigator.onLine,
+      bids: document.querySelectorAll('#bidList .bid').length
+    });
+  }, { once: true });
+})();
+</script>
+
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BidRadar — 입찰 공고 모니터링</title>
+<meta name="description" content="우리 회사에 맞는 입찰 공고만 모아 마감 전에 알려주는 B2B 모니터링 대시보드 데모.">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="/demo" aria-label="BidRadar 대시보드">
+      <span class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="2.2" fill="currentColor"/><path d="M12 3.2a8.8 8.8 0 0 1 8.8 8.8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M12 7a5 5 0 0 1 5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity=".55"/><path d="M12 20.8A8.8 8.8 0 0 1 3.2 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity=".3"/></svg>
+      </span>
+      <span class="brand-text"><b>BidRadar</b><small>입찰레이더</small></span>
+    </a>
+
+    <nav class="mainnav" aria-label="주요 메뉴">
+      <a href="/" >서비스 소개</a>
+      <a href="#" class="active">대시보드</a>
+      <a href="#weekly">주간 리포트</a>
+      <a href="#" id="navAlerts">알림 설정</a>
+      <a href="/#pricing" id="navPricing">요금제</a>
+    </nav>
+
+    <div class="top-actions">
+      <span class="demo-badge" title="포트폴리오용 데모 데이터">DEMO</span>
+      <button class="icon-btn" id="themeToggle" aria-label="라이트/다크 테마 전환">
+        <svg class="icon-sun" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="1.8"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        <svg class="icon-moon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+      </button>
+      <button class="btn btn-primary" id="alertBtn">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 21h4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        알림 설정
+      </button>
+      <div class="avatar" title="데모 사용자">김</div>
+    </div>
+  </div>
+</header>
+
+<main class="shell">
+  <section class="page-head">
+    <div>
+      <div class="eyebrow">PROCUREMENT MONITOR</div>
+      <h1>입찰 모니터링</h1>
+      <p>우리 회사 조건에 맞는 공고만 모아, 마감 전에 알려드립니다.</p>
+    </div>
+    <div class="sync-pill"><span class="pulse" aria-hidden="true"></span> 자동 수집 · <span id="lastSync">--:--</span> 갱신</div>
+  </section>
+
+  <section class="kpis" id="kpis" aria-label="핵심 지표">
+    <article class="kpi">
+      <div class="kpi-top"><span>신규 공고</span><span class="kpi-icon blue"><svg viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg></span></div>
+      <div class="kpi-value" id="kpiNew">—</div>
+      <div class="kpi-sub"><span class="delta" id="kpiDelta">—</span> 지난 24시간 대비</div>
+    </article>
+    <article class="kpi">
+      <div class="kpi-top"><span>마감 임박</span><span class="kpi-icon red"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8.2" stroke="currentColor" stroke-width="1.8"/><path d="M12 7.5V12l3 2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span></div>
+      <div class="kpi-value" id="kpiClosing">—</div>
+      <div class="kpi-sub">3일 안에 마감되는 공고</div>
+    </article>
+    <article class="kpi">
+      <div class="kpi-top"><span>7일 내 마감</span><span class="kpi-icon amber"><svg viewBox="0 0 24 24" fill="none"><rect x="4" y="5.5" width="16" height="14" rx="2.5" stroke="currentColor" stroke-width="1.8"/><path d="M4 10h16M8 3.5v4M16 3.5v4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span></div>
+      <div class="kpi-value" id="kpiWeek">—</div>
+      <div class="kpi-sub" id="kpiWeekAmount">—</div>
+    </article>
+    <article class="kpi">
+      <div class="kpi-top"><span>진행 중 사업금액</span><span class="kpi-icon green"><svg viewBox="0 0 24 24" fill="none"><path d="M4 19V9m5 10V5m5 14v-7m5 7V8" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg></span></div>
+      <div class="kpi-value" id="kpiAmount">—</div>
+      <div class="kpi-sub">마감 전 공고 합계</div>
+    </article>
+  </section>
+
+  <div class="workspace">
+    <aside class="card filter-card" aria-label="공고 필터">
+      <div class="filter-head">
+        <h2>필터</h2>
+        <div class="filter-actions">
+          <button class="link-btn filter-toggle" id="filterToggle" type="button">필터 열기</button>
+          <button class="link-btn" id="resetFilters" type="button">초기화</button>
+        </div>
+      </div>
+      <div class="filter-body" id="filterBody">
+
+      <label class="field">
+        <span>키워드</span>
+        <div class="input-wrap">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="11" cy="11" r="6.5" stroke="currentColor" stroke-width="1.8"/><path d="m16 16 4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          <input id="q" type="search" placeholder="예: AI, CCTV, 용역" autocomplete="off">
+        </div>
+      </label>
+
+      <label class="field"><span>지역</span><select id="region"><option value="">전체 지역</option></select></label>
+      <label class="field"><span>업종</span><select id="category"><option value="">전체 업종</option></select></label>
+      <label class="field">
+        <span>사업금액</span>
+        <select id="minAmount">
+          <option value="0">전체 금액</option>
+          <option value="100000000">1억 이상</option>
+          <option value="300000000">3억 이상</option>
+          <option value="1000000000">10억 이상</option>
+        </select>
+      </label>
+      <label class="field">
+        <span>마감 기간</span>
+        <select id="days">
+          <option value="0">전체 기간</option>
+          <option value="3">3일 이내</option>
+          <option value="7">7일 이내</option>
+          <option value="14">14일 이내</option>
+        </select>
+      </label>
+
+      <label class="switch-row">
+        <input type="checkbox" id="onlyFav">
+        <span class="switch" aria-hidden="true"></span>
+        관심 공고만 보기
+      </label>
+
+      <div class="saved-block">
+        <div class="saved-head"><span>내 알림</span><span class="count" id="alertCount">0</span></div>
+        <div class="my-alerts" id="myAlerts"></div>
+        <button class="link-btn add-alert" id="addAlert" type="button">+ 알림 추가</button>
+      </div>
+      </div>
+    </aside>
+
+    <section class="list-panel" aria-label="공고 목록">
+      <div class="list-head">
+        <div>
+          <h2>공고 목록</h2>
+          <p><strong id="resultCount">0</strong>건 · 마감 임박순</p>
+        </div>
+        <div class="list-tools">
+          <select id="sort" aria-label="정렬">
+            <option value="close">마감 임박순</option>
+            <option value="posted">최근 등록순</option>
+            <option value="amount">금액 높은순</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="chips" id="savedChips" aria-label="빠른 필터"></div>
+      <div class="bid-list" id="bidList">
+        <div class="skeleton-row"></div>
+        <div class="skeleton-row"></div>
+        <div class="skeleton-row"></div>
+      </div>
+      <div class="list-foot">
+        <button class="btn btn-ghost" id="loadMore" type="button" hidden>더 보기</button>
+      </div>
+    </section>
+
+    <aside class="rail" aria-label="알림 및 리포트">
+      <section class="card telegram-card">
+        <div class="card-head">
+          <div class="tg-title">
+            <span class="tg-logo" id="alertLogo" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="m21 4-3.2 15.2c-.2 1-.8 1.2-1.6.8l-4.5-3.3-2.2 2.1c-.2.2-.5.4-.9.4l.3-4.6 8.4-7.6c.4-.3-.1-.5-.6-.2L7.3 12.4 2.9 11c-1-.3-1-1 .2-1.4L19.8 3c.8-.3 1.4.2 1.2 1Z" fill="currentColor"/></svg></span>
+            <div><h3 id="alertTitle">텔레그램 알림</h3><p id="alertSubtitle">마감 D-3 · D-1 자동 발송</p></div>
+          </div>
+          <span class="live-dot"><i></i>LIVE</span>
+        </div>
+        <div class="phone" id="telegramFeed">
+          <div class="tg-empty">알림을 불러오는 중…</div>
+        </div>
+        <button class="btn btn-ghost full" id="previewAlert" type="button">알림 미리보기</button>
+      </section>
+
+      <section class="card weekly-card" id="weekly">
+        <div class="card-head">
+          <div><h3>7일 내 마감</h3><p id="weekRange">—</p></div>
+          <span class="week-total" id="weekTotal">—</span>
+        </div>
+        <div class="bars" id="weekBars"></div>
+        <div class="divider"></div>
+        <div class="mini-title">업종 분포</div>
+        <div class="category-bars" id="categoryBars"></div>
+      </section>
+
+      <section class="card demo-card">
+        <div class="demo-card-title">
+          <span class="demo-dot"></span> <span id="srcLabel">데이터 출처</span>
+        </div>
+        <p id="srcNote">나라장터 입찰공고정보서비스에서 수집한 공고입니다.</p>
+        <div class="source-grid">
+          <div><b id="srcBids">—</b><span>수집 공고</span></div>
+          <div><b id="srcRegions">—</b><span>지역</span></div>
+          <div><b id="srcCycle">—</b><span>수집 주기</span></div>
+        </div>
+      </section>
+    </aside>
+  </div>
+</main>
+
+<footer class="site-foot">
+  <span>BidRadar — 입찰 공고 모니터링 데모</span>
+  <span>Standard library only · SQLite · No build step</span>
+</footer>
+
+<div class="overlay" id="drawerOverlay"></div>
+<aside class="drawer" id="drawer" aria-hidden="true" aria-label="공고 상세">
+  <div class="drawer-head">
+    <span class="drawer-label">공고 상세</span>
+    <button class="icon-btn" id="drawerClose" aria-label="닫기">
+      <svg viewBox="0 0 24 24" fill="none"><path d="m6 6 12 12M18 6 6 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+    </button>
+  </div>
+  <div class="drawer-body" id="drawerBody"></div>
+</aside>
+
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div class="modal-head">
+      <div>
+        <h2 id="modalTitle">알림 설정</h2>
+        <p>조건에 맞는 새 공고를 디스코드·텔레그램으로 받아보세요.</p>
+      </div>
+      <button class="icon-btn" id="modalClose" aria-label="닫기">
+        <svg viewBox="0 0 24 24" fill="none"><path d="m6 6 12 12M18 6 6 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+      </button>
+    </div>
+    <form id="alertForm" class="modal-body">
+      <label class="field"><span>알림 이름</span><input id="alertName" maxlength="24" placeholder="예: AI 사업 공고" required></label>
+      <label class="field"><span>키워드</span><input id="alertKeyword" maxlength="40" placeholder="예: AI, 데이터, 플랫폼"></label>
+      <div class="field-row">
+        <label class="field"><span>지역</span><select id="alertRegion"><option value="">전체</option></select></label>
+        <label class="field"><span>업종</span><select id="alertCategory"><option value="">전체</option></select></label>
+      </div>
+      <div class="field-row">
+        <label class="field"><span>수신 채널</span><select id="alertChannel"><option>텔레그램</option><option>디스코드</option><option>이메일</option><option>슬랙</option></select></label>
+        <label class="field"><span>발송 시점</span><select id="alertWhen"><option>실시간</option><option>매일 09:00</option><option>매주 월요일</option></select></label>
+      </div>
+      <div class="modal-note">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.7"/><path d="M12 11v5M12 8h.01" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>
+        데모에서는 브라우저에만 저장됩니다. 실제 서비스에서는 계정별로 서버에 저장됩니다.
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost" id="modalCancel">취소</button>
+        <button type="submit" class="btn btn-primary">알림 저장</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script src="/app.js?v=20261113f" defer></script>
+</body>
+</html>

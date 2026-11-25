@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BidRadar — 로그인</title>
+<meta name="description" content="BidRadar 고객 로그인. 나라장터 입찰 공고를 조건에 맞춰 디스코드로 받아보세요.">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/style.css">
+<link rel="stylesheet" href="/console.css?v=20261116a">
+</head>
+<body class="auth-body">
+<main class="auth-wrap">
+  <a class="auth-brand" href="/">
+    <span class="mark" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="2.2" fill="currentColor"/><path d="M12 3.2a8.8 8.8 0 0 1 8.8 8.8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M12 7a5 5 0 0 1 5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity=".55"/></svg>
+    </span>
+    <b>BidRadar</b>
+  </a>
+
+  <section class="auth-card">
+    <div class="auth-tabs" role="tablist">
+      <button type="button" data-tab="login" class="on" role="tab" aria-selected="true">로그인</button>
+      <button type="button" data-tab="signup" role="tab" aria-selected="false">시작하기</button>
+    </div>
+
+    <form id="authForm" novalidate>
+      <label>이메일
+        <input type="email" name="email" autocomplete="username" required placeholder="you@company.co.kr">
+      </label>
+      <label>비밀번호
+        <input type="password" name="password" autocomplete="current-password" required minlength="8" placeholder="8자 이상">
+      </label>
+
+      <div id="signupFields" hidden>
+        <label>회사명
+          <input type="text" name="company" maxlength="80" placeholder="(주)예시테크">
+        </label>
+        <div class="field-grid">
+          <label>담당자
+            <input type="text" name="name" maxlength="40" placeholder="홍길동">
+          </label>
+          <label>연락처
+            <input type="tel" name="phone" maxlength="40" placeholder="010-0000-0000">
+          </label>
+        </div>
+        <label>초대 코드
+          <input type="text" name="invite" maxlength="20" placeholder="발급받은 코드" autocomplete="off">
+        </label>
+        <p class="auth-consent">
+          가입하면 <a href="/terms" target="_blank" rel="noopener">이용약관</a>과
+          <a href="/privacy" target="_blank" rel="noopener">개인정보처리방침</a>에 동의하는 것으로 봅니다.<br>
+          초대 코드가 없으신가요? <a href="/#contact">도입 상담 신청</a>
+        </p>
+      </div>
+
+      <p class="auth-error" id="authError" hidden></p>
+      <button class="btn btn-primary full" id="authSubmit" type="submit">로그인</button>
+    </form>
+
+    <p class="auth-note">아직 둘러보는 중이라면 <a href="/demo">데모 대시보드</a>를 먼저 보세요.</p>
+  </section>
+</main>
+<script src="/login.js?v=20261113a" defer></script>
+</body>
+</html>

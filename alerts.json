@@ -1,0 +1,16 @@
+{
+  "customers": [
+    {
+      "id": "sample",
+      "name": "샘플 고객 (SI·용역 / 수도권 / 1억 이상)",
+      "enabled": true,
+      "webhook": "env:DISCORD_WEBHOOK_URL",
+      "keywords": [],
+      "exclude_keywords": ["폐기물", "청소", "경비", "급식"],
+      "regions": ["서울", "경기", "인천"],
+      "categories": ["소프트웨어/SI", "용역/컨설팅"],
+      "min_amount": 100000000,
+      "stages": [3, 1]
+    }
+  ]
+}

@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="light">
+<head>
+<meta charset="utf-8">
+<script>
+/* 진단용: 브라우저에서 난 오류를 서버 로그로 보냅니다. (개인정보 없음) */
+(function () {
+  function send(kind, data) {
+    try {
+      var body = { kind: kind, path: location.pathname, ref: document.referrer,
+                   ua: navigator.userAgent, extra: data || {} };
+      var json = JSON.stringify(body);
+      if (navigator.sendBeacon) {
+        navigator.sendBeacon('/api/clientlog', new Blob([json], { type: 'application/json' }));
+      } else {
+        fetch('/api/clientlog', { method: 'POST', body: json,
+          headers: { 'Content-Type': 'application/json' }, keepalive: true });
+      }
+    } catch (e) {}
+  }
+  window.__brlog = send;
+  window.addEventListener('error', function (e) {
+    if (e && e.message && /ResizeObserver/.test(e.message)) return;
+    send('error', {
+      message: (e && e.message) || 'unknown',
+      src: ((e && e.filename) || '') + ':' + ((e && e.lineno) || 0) + ':' + ((e && e.colno) || 0),
+      stack: (e && e.error && e.error.stack) ? String(e.error.stack).slice(0, 1500) : ''
+    });
+  }, true);
+  window.addEventListener('unhandledrejection', function (e) {
+    var r = e && e.reason;
+    send('rejection', {
+      message: (r && r.message) ? r.message : String(r),
+      stack: (r && r.stack) ? String(r.stack).slice(0, 1500) : ''
+    });
+  });
+  document.addEventListener('click', function (e) {
+    var a = e.target && e.target.closest ? e.target.closest('a[href="/demo"]') : null;
+    if (a) send('demo_click', { href: a.getAttribute('href'), text: (a.textContent || '').trim().slice(0, 40) });
+  }, true);
+  window.addEventListener('load', function () {
+    var storage = 'ok';
+    try { localStorage.setItem('__brt', '1'); localStorage.removeItem('__brt'); }
+    catch (err) { storage = 'blocked:' + ((err && err.name) || 'error'); }
+    send('hello', {
+      storage: storage,
+      vw: window.innerWidth, dpr: window.devicePixelRatio,
+      lang: navigator.language, online: navigator.onLine,
+      bids: document.querySelectorAll('#bidList .bid').length
+    });
+  }, { once: true });
+})();
+</script>
+
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BidRadar — 우리 회사에 맞는 입찰 공고만, 마감 전에</title>
+<meta name="description" content="나라장터 입찰 공고를 15분마다 수집해 조건에 맞는 공고만 디스코드로 보내드립니다. 구축비 없이 월 29만원부터, 당일 시작.">
+<link rel="canonical" href="https://bidradar-kr.duckdns.org/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="BidRadar">
+<meta property="og:url" content="https://bidradar-kr.duckdns.org/">
+<meta property="og:title" content="BidRadar — 우리 회사에 맞는 입찰 공고만, 마감 전에">
+<meta property="og:description" content="키워드·지역·업종·금액 조건에 맞는 공고만 모아 마감 D-3·D-1에 알려드립니다.">
+<meta property="og:image" content="https://bidradar-kr.duckdns.org/img/dashboard.png">
+<meta property="og:image:width" content="1440">
+<meta property="og:image:height" content="1244">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/style.css">
+<link rel="stylesheet" href="/landing.css">
+</head>
+<body class="lp">
+
+<header class="lp-nav">
+  <div class="lp-wrap lp-nav-inner">
+    <a class="brand" href="/" aria-label="BidRadar 홈">
+      <span class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="2.2" fill="currentColor"/><path d="M12 3.2a8.8 8.8 0 0 1 8.8 8.8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M12 7a5 5 0 0 1 5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity=".55"/><path d="M12 20.8A8.8 8.8 0 0 1 3.2 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity=".3"/></svg>
+      </span>
+      <span class="brand-text"><b>BidRadar</b><small>입찰레이더</small></span>
+    </a>
+
+    <nav class="lp-links" aria-label="주요 메뉴">
+      <a href="#problem">문제</a>
+      <a href="#how">작동 방식</a>
+      <a href="#pricing">요금</a>
+      <a href="#faq">FAQ</a>
+    </nav>
+
+    <div class="lp-nav-actions">
+      <button class="icon-btn" id="themeToggle" aria-label="라이트/다크 테마 전환">
+        <svg class="icon-sun" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="1.8"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        <svg class="icon-moon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+      </button>
+      <a class="btn btn-ghost lp-hide-sm" href="/demo">데모 보기</a>
+      <a class="btn btn-ghost lp-hide-sm" href="/login">고객 로그인</a>
+      <a class="btn btn-primary" href="#contact">무료 상담</a>
+    </div>
+  </div>
+</header>
+
+<main>
+
+  <section class="hero">
+    <div class="lp-wrap hero-grid">
+      <div class="hero-copy">
+        <div class="eyebrow">B2B 입찰 공고 모니터링</div>
+        <h1>공고를 더 보여주지 않습니다.<br><span class="hl">볼 것만</span> 보여드립니다.</h1>
+        <p class="lead">
+          나라장터를 매일 돌 필요 없이, 키워드·지역·업종·금액 조건에 맞는
+          공고만 모아 <b>마감 D-3·D-1에 디스코드</b>으로 보내드립니다.
+        </p>
+        <div class="hero-cta">
+          <a class="btn btn-primary btn-lg" href="/demo">
+            데모 먼저 보기
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </a>
+          <a class="btn btn-ghost btn-lg" href="#contact">도입 상담</a>
+        </div>
+        <ul class="hero-meta">
+          <li><b>15분</b> 수집 주기</li>
+          <li><b>당일</b> 시작</li>
+          <li><b>월 19만</b> 부터</li>
+        </ul>
+      </div>
+
+      <div class="hero-visual" aria-label="BidRadar 대시보드 화면 미리보기">
+        <a class="browser browser-link" href="/demo" aria-label="실시간 데모 열기">
+          <div class="browser-bar">
+            <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+            <span class="browser-url">bidradar / 입찰 모니터링</span>
+          </div>
+          <img src="/img/dashboard.png" alt="입찰 공고 KPI, 필터, 공고 목록, 디스코드 알림이 한 화면에 정리된 BidRadar 대시보드" width="1440" height="1244">
+          <span class="browser-cta">이 화면 그대로 열기 →</span>
+        </a>
+        <div class="tg-toast">
+          <span class="tg-badge" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none"><path d="m21 4-3.2 15.2c-.2 1-.8 1.2-1.6.8l-4.5-3.3-2.2 2.1c-.2.2-.5.4-.9.4l.3-4.6 8.4-7.6c.4-.3-.1-.5-.6-.2L7.3 12.4 2.9 11c-1-.3-1-1 .2-1.4L19.8 3c.8-.3 1.4.2 1.2 1Z" fill="currentColor"/></svg>
+          </span>
+          <div>
+            <b>[D-3] 경기도시공사 스마트시티 통합플랫폼</b>
+            <span>경기도시공사 · 11.14 18:00 마감 · 5.2억</span>
+          </div>
+        </div>
+        <span class="demo-tag">LIVE DATA · 실제 공고</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="lp-section" id="problem">
+    <div class="lp-wrap">
+      <div class="section-head">
+        <div class="eyebrow">WHY</div>
+        <h2>공고를 놓치는 건 게을러서가 아닙니다</h2>
+        <p>사이트가 흩어져 있고 조건이 매번 달라서, 사람이 매일 같은 일을 반복하기 때문입니다.</p>
+      </div>
+      <div class="pain-grid">
+        <article class="pain">
+          <span class="pain-icon blue" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none"><rect x="3.5" y="5" width="17" height="14" rx="2.5" stroke="currentColor" stroke-width="1.8"/><path d="M3.5 9.5h17M7 13h4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          </span>
+          <h3>확인할 사이트가 5개 이상</h3>
+          <p>나라장터, 지자체, 공공기관, 협회 공지까지. 하루 30분에서 1시간이 검색에만 사라집니다.</p>
+        </article>
+        <article class="pain">
+          <span class="pain-icon amber" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none"><path d="M4 6h16M7 12h10M10 18h4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          </span>
+          <h3>조건이 매번 달라짐</h3>
+          <p>지역·업종·금액·마감일을 머릿속으로 조합하다 보면, 조건에 맞는 공고를 그냥 지나칩니다.</p>
+        </article>
+        <article class="pain">
+          <span class="pain-icon red" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8.2" stroke="currentColor" stroke-width="1.8"/><path d="M12 7.5V12l3 2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          </span>
+          <h3>마감은 갑자기 옵니다</h3>
+          <p>공고를 확인했을 때는 이미 제출 서류를 준비하기 늦은 경우가 많습니다.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="lp-section tinted" id="how">
+    <div class="lp-wrap">
+      <div class="section-head">
+        <div class="eyebrow">HOW IT WORKS</div>
+        <h2>조건만 알려주시면, 나머지는 자동입니다</h2>
+        <p>새로운 시스템을 배우실 필요는 없습니다. 알림은 이미 쓰고 계신 디스코드로 옵니다.</p>
+      </div>
+      <ol class="steps">
+        <li class="step">
+          <span class="step-no">01</span>
+          <h3>조건 등록</h3>
+          <p>관심 키워드 10~20개와 주력 지역·업종·최소 금액을 정리합니다. 저희가 함께 세팅합니다.</p>
+        </li>
+        <li class="step">
+          <span class="step-no">02</span>
+          <h3>자동 수집</h3>
+          <p>나라장터에 게시된 공공기관 공고를 15분 주기로 확인하고, 같은 공고는 중복 없이 정리합니다.</p>
+        </li>
+        <li class="step">
+          <span class="step-no">03</span>
+          <h3>디스코드 알림</h3>
+          <p>신규 공고는 실시간으로, 마감이 가까운 공고는 D-3·D-1에 한 번 더 알려드립니다.</p>
+        </li>
+        <li class="step">
+          <span class="step-no">04</span>
+          <h3>주간 리포트</h3>
+          <p>매주 월요일, 지난주 마감 현황과 이번 주 마감 일정을 요일별·업종별로 요약합니다.</p>
+        </li>
+      </ol>
+    </div>
+  </section>
+
+  <section class="lp-section" id="demo">
+    <div class="lp-wrap demo-grid">
+      <div class="demo-copy">
+        <div class="eyebrow">LIVE DEMO</div>
+        <h2>화면을 먼저 확인하세요</h2>
+        <p class="section-sub">
+          실제로 쓰게 될 화면 그대로입니다. 키워드·지역·업종·금액을 바꿔가며
+          어떤 공고가 남는지 직접 확인해 보실 수 있습니다.
+        </p>
+        <ul class="check-list">
+          <li>조건 필터 6종 — 키워드, 지역, 업종, 금액, 마감 기간, 관심 공고</li>
+          <li>공고 상세 — 사업 개요, 참가 자격, 첨부파일, 담당자</li>
+          <li>D-day·긴급·재공고 배지로 마감 우선순위 확인</li>
+          <li>디스코드 마감 D-3·D-1 알림, 주간 리포트</li>
+          <li>모바일 반응형, 라이트/다크 테마</li>
+        </ul>
+        <div class="demo-actions">
+          <a class="btn btn-primary btn-lg" href="/demo">데모 열기</a>
+          <span class="demo-note">로그인 없이 바로 사용할 수 있습니다.</span>
+        </div>
+      </div>
+      <figure class="demo-shot">
+        <a href="/demo" aria-label="실시간 데모 열기">
+          <img src="/img/dashboard-dark.png" alt="다크 모드 대시보드 — 신규 공고, 마감 임박, 업종 분포, 디스코드 알림" width="1440" height="1244">
+        </a>
+        <figcaption>데모 화면 · 다크 모드 · 이미지를 눌러 바로 열기</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section class="lp-section tinted" id="pricing">
+    <div class="lp-wrap">
+      <div class="section-head">
+        <div class="eyebrow">PRICING</div>
+        <h2>설치 없이, 월 이용료로 시작</h2>
+        <p>가입 후 조건과 디스코드 웹훅만 저장하면 그날부터 알림이 옵니다. 구축비·세팅비는 없습니다.</p>
+      </div>
+
+      <div class="plans">
+        <article class="plan">
+          <h3>파일럿</h3>
+          <p class="plan-desc">첫 고객 2곳 한정. 사례 공개에 동의하면 할인됩니다.</p>
+          <div class="plan-price"><span class="amount">19만원</span><span class="unit">/월</span></div>
+          <div class="plan-month">3개월 · 구축비 0원</div>
+          <ul>
+            <li>알림 조건 3개</li>
+            <li>디스코드 D-3 / D-1 알림</li>
+            <li>내 조건 대시보드</li>
+            <li>알림 발송 이력</li>
+          </ul>
+          <a class="btn btn-ghost full" href="#contact">파일럿 신청</a>
+        </article>
+
+        <article class="plan">
+          <h3>Basic</h3>
+          <p class="plan-desc">공고 확인을 한 사람이 담당하는 회사에 맞습니다.</p>
+          <div class="plan-price"><span class="amount">29만원</span><span class="unit">/월</span></div>
+          <div class="plan-month">3개월 단위 선결제</div>
+          <ul>
+            <li>알림 조건 3개</li>
+            <li>디스코드 D-3 / D-1 알림</li>
+            <li>내 조건 대시보드</li>
+            <li>알림 발송 이력</li>
+          </ul>
+          <a class="btn btn-ghost full" href="#contact">상담 신청</a>
+        </article>
+
+        <article class="plan featured">
+          <span class="plan-badge">추천</span>
+          <h3>Pro</h3>
+          <p class="plan-desc">입찰을 여러 명이 나눠 보거나, 제출 건수가 많은 회사에 맞습니다.</p>
+          <div class="plan-price"><span class="amount">49만원</span><span class="unit">/월</span></div>
+          <div class="plan-month">3개월 단위 선결제</div>
+          <ul>
+            <li>알림 조건 10개</li>
+            <li>주간 리포트</li>
+            <li>조건 변경 무제한</li>
+            <li>우선 지원 (디스코드)</li>
+          </ul>
+          <a class="btn btn-primary full" href="#contact">상담 신청</a>
+        </article>
+      </div>
+
+      <p class="plan-note">
+        구축비·세팅비 없음. 월 이용료는 3개월 단위 선결제이며 부가세 별도입니다.
+        파일럿은 첫 달 후 해지할 수 있습니다.
+      </p>
+    </div>
+  </section>
+
+  <section class="lp-section" id="faq">
+    <div class="lp-wrap narrow">
+      <div class="section-head">
+        <div class="eyebrow">FAQ</div>
+        <h2>도입 전에 많이 묻는 것들</h2>
+      </div>
+      <div class="faq">
+        <details open>
+          <summary>데모의 공고는 실제 공고인가요?</summary>
+          <p id="faqData">네. 현재 데모는 나라장터 입찰공고정보서비스에서 15분마다 수집한 실제 공고를 보여줍니다. 각 공고에는 공고번호·마감일시·원문 링크가 함께 표시됩니다.</p>
+        </details>
+        <details>
+          <summary>모든 공고를 빠짐없이 수집하나요?</summary>
+          <p>아니요. 원문 사이트의 공개 API와 게시판을 기준으로 수집하며, 누락 가능성을 없앨 수는 없습니다. 그래서 모든 알림에 원문 링크를 함께 보내드리고, 중요한 공고는 원문에서 최종 확인하시도록 안내합니다.</p>
+        </details>
+        <details>
+          <summary>알림은 어디로 오나요?</summary>
+          <p>기본은 디스코드 웹훅입니다. 고객 콘솔에서 채널을 연결하고 테스트 발송으로 바로 확인할 수 있습니다. 알림 조건은 화면에서 직접 수정하며 변경에 추가 비용은 없습니다.</p>
+        </details>
+        <details>
+          <summary>우리 회사만의 조건이 복잡한데 가능할까요?</summary>
+          <p>키워드·지역·업종·금액·마감 기간 조합까지는 기본 지원합니다. 그 외 조건(예: 특정 발주기관 제외, 실적 요건)은 상담 후 수집 규칙으로 반영합니다.</p>
+        </details>
+        <details>
+          <summary>계약 기간과 해지는 어떻게 되나요?</summary>
+          <p>월 이용료는 3개월 단위로 시작하고 이후 월 단위로 갱신됩니다. 해지 의사를 말씀하시면 다음 결제일 전까지 정리해 드립니다.</p>
+        </details>
+        <details>
+          <summary>상담에서 남긴 정보는 어떻게 쓰나요?</summary>
+          <p>상담과 서비스 안내 목적으로만 사용합니다. 도입하지 않으시면 요청 시 바로 삭제하며, 제3자에게 제공하지 않습니다.</p>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <section class="lp-section contact-section" id="contact">
+    <div class="lp-wrap contact-grid">
+      <div class="contact-copy">
+        <div class="eyebrow">GET STARTED</div>
+        <h2>오늘 시작하면, 오늘부터 알림이 옵니다</h2>
+        <p class="section-sub">
+          지금 어떻게 공고를 확인하고 계신지 10분만 알려주세요.
+          조건에 맞춰 수집 범위와 알림 설계를 정리해 드립니다.
+        </p>
+        <ol class="contact-steps">
+          <li><b>1. 10분 상담</b><span>현재 확인 방식과 놓친 공고 사례를 듣습니다.</span></li>
+          <li><b>2. 조건·웹훅 설정</b><span>키워드·지역·분야·금액과 디스코드 채널을 연결합니다.</span></li>
+          <li><b>3. 테스트 알림</b><span>테스트 발송으로 확인한 뒤 다음 발송 시각부터 시작합니다.</span></li>
+        </ol>
+        <p class="contact-note">
+          급하지 않으셔도 됩니다. 상담 후 결정하지 않으셔도 비용은 없습니다.
+        </p>
+      </div>
+
+      <form class="lead-form" id="leadForm" novalidate>
+        <div class="form-head">
+          <h3>무료 상담 신청</h3>
+          <p>영업일 기준 1일 이내에 회신드립니다.</p>
+        </div>
+
+        <div class="form-row">
+          <label class="field"><span>회사명 <i>*</i></span><input name="company" maxlength="80" required placeholder="예: ○○건설(주)"></label>
+          <label class="field"><span>담당자 <i>*</i></span><input name="name" maxlength="40" required placeholder="예: 김민수"></label>
+        </div>
+        <label class="field"><span>연락처 <i>*</i></span><input name="contact" maxlength="120" required placeholder="이메일 또는 전화번호"></label>
+        <label class="field"><span>관심 키워드·지역</span><input name="keywords" maxlength="200" placeholder="예: AI, CCTV / 경기, 서울"></label>
+        <label class="field"><span>현재 공고 확인 방법</span>
+          <select name="method">
+            <option value="">선택해 주세요</option>
+            <option>나라장터 직접 검색</option>
+            <option>지자체·기관 사이트 개별 확인</option>
+            <option>엑셀·메모로 수기 정리</option>
+            <option>담당 직원이 매일 확인</option>
+            <option>지금은 거의 확인하지 못함</option>
+          </select>
+        </label>
+        <label class="field"><span>문의 내용</span><textarea name="message" maxlength="1000" rows="3" placeholder="예: 마감 3일 전 알림이 필요합니다. 지역은 경기·서울입니다."></textarea></label>
+
+        <input class="hp" type="text" name="website" tabindex="-1" autocomplete="off" aria-hidden="true">
+
+        <label class="consent">
+          <input type="checkbox" name="consent" required>
+          <span>상담을 위한 개인정보 수집·이용에 동의합니다. (회사명·담당자·연락처, 상담 목적, 요청 시 즉시 삭제) <a href="/privacy" target="_blank" rel="noopener">개인정보처리방침</a></span>
+        </label>
+
+        <button class="btn btn-primary btn-lg full" type="submit" id="leadSubmit">상담 신청하기</button>
+        <p class="form-status" id="formStatus" role="status" aria-live="polite"></p>
+      </form>
+    </div>
+  </section>
+
+</main>
+
+<footer class="lp-foot">
+  <div class="lp-wrap lp-foot-inner">
+    <div>
+      <a class="brand" href="/">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="2.2" fill="currentColor"/><path d="M12 3.2a8.8 8.8 0 0 1 8.8 8.8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M12 7a5 5 0 0 1 5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity=".55"/><path d="M12 20.8A8.8 8.8 0 0 1 3.2 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity=".3"/></svg>
+        </span>
+        <span class="brand-text"><b>BidRadar</b><small>입찰레이더</small></span>
+      </a>
+      <p class="foot-desc">나라장터 입찰 공고 수집·알림. 구축비 없이 월 단위 운영.</p>
+    </div>
+    <div class="foot-links">
+      <a href="/demo">데모</a>
+      <a href="/login">고객 로그인</a>
+      <a href="#pricing">요금</a>
+      <a href="#faq">FAQ</a>
+      <a href="#contact">상담</a>
+      <a href="/terms">이용약관</a>
+      <a href="/privacy">개인정보처리방침</a>
+    </div>
+  </div>
+  <div class="lp-wrap foot-fine">
+    <span>© 2026 BidRadar</span>
+    <span id="footNote">공고 데이터는 나라장터(공공데이터포털)에서 수집합니다.</span>
+  </div>
+</footer>
+
+<script src="/landing.js?v=20261113d" defer></script>
+  <a class="mobile-demo-cta" href="/demo">실시간 데모 열기</a>
+</body>
+</html>

@@ -1,0 +1,15 @@
+.env
+__pycache__/
+*.pyc
+
+# 데이터베이스 (데모는 재생성 가능, 리드는 개인정보)
+data/*.db
+data/*.db-wal
+data/*.db-shm
+data/raw_bid_sample.json
+data/notifications.log
+
+# 운영 로그 및 런타임 상태 파일
+logs/
+data/api_quota.json
+data/traffic.json

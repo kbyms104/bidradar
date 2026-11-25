@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BidRadar — 알림 설정</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/style.css">
+<link rel="stylesheet" href="/console.css?v=20261116a">
+</head>
+<body>
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="/app" aria-label="BidRadar 고객 콘솔">
+      <span class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="2.2" fill="currentColor"/><path d="M12 3.2a8.8 8.8 0 0 1 8.8 8.8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M12 7a5 5 0 0 1 5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity=".55"/><path d="M12 20.8A8.8 8.8 0 0 1 3.2 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity=".3"/></svg>
+      </span>
+      <span class="brand-text"><b>BidRadar</b><small>입찰레이더</small></span>
+    </a>
+
+    <nav class="mainnav" aria-label="주요 메뉴">
+      <a href="/app">대시보드</a>
+      <a href="/app/settings" class="active">알림 설정</a>
+      <a href="/app/settings#history">알림 이력</a>
+      <a href="/#pricing">요금제</a>
+    </nav>
+
+    <div class="top-actions">
+      <span class="demo-badge" id="accountBadge">내 계정</span>
+      <a class="btn btn-ghost btn-sm" href="/logout">로그아웃</a>
+    </div>
+  </div>
+</header>
+
+<main class="settings-shell">
+  <div class="settings-head" style="margin-bottom:0">
+    <div>
+      <h2 style="font-size:19px">알림 설정</h2>
+      <p style="margin:4px 0 0">내 조건에 맞는 공고를 마감 D-3 · D-1에 디스코드로 보내드립니다.</p>
+    </div>
+  </div>
+
+  <!-- ------------------------------------------------ 디스코드 웹훅 -->
+  <section class="card" id="webhookCard">
+    <div class="settings-head">
+      <div>
+        <h2>디스코드 알림</h2>
+        <p>비공개 채널을 하나 만들고 웹훅 URL을 붙여넣으세요.</p>
+      </div>
+      <span class="status" id="webhookState">확인 중…</span>
+    </div>
+
+    <label>디스코드 웹훅 URL
+      <input type="url" id="webhook" placeholder="https://discord.com/api/webhooks/..." autocomplete="off" spellcheck="false">
+    </label>
+    <p class="hint">
+      디스코드 앱 → 서버 설정 → 연동 → <b>웹훅</b> → 새 웹훅 → URL 복사.
+      이 URL을 아는 사람은 채널에 글을 쓸 수 있으니 고객센터에 그대로 보내지 마세요.
+    </p>
+    <div class="row-actions">
+      <button class="btn btn-primary" id="saveWebhook" type="button">저장</button>
+      <button class="btn btn-ghost" id="testWebhook" type="button">테스트 발송</button>
+      <span class="status" id="webhookMsg"></span>
+    </div>
+  </section>
+
+  <!-- ------------------------------------------------ 알림 조건 -->
+  <section class="card" id="conditionsCard">
+    <div class="settings-head">
+      <div>
+        <h2>알림 조건</h2>
+        <p>조건마다 따로 발송됩니다. 여러 개 등록해도 됩니다.</p>
+      </div>
+      <button class="btn btn-primary btn-sm" id="newCondition" type="button">+ 조건 추가</button>
+    </div>
+
+    <div class="cond-list" id="condList">
+      <p class="history-empty">불러오는 중…</p>
+    </div>
+
+    <form class="cond-form" id="condForm" novalidate>
+      <input type="hidden" id="condId">
+      <div class="field-grid">
+        <label>조건 이름
+          <input type="text" id="condName" maxlength="60" placeholder="예: 수도권 SI">
+        </label>
+        <label>최소 금액 (원)
+          <input type="number" id="condMin" min="0" step="1000000" placeholder="0">
+        </label>
+      </div>
+
+      <label>키워드 (쉼표로 구분)
+        <input type="text" id="condKeywords" placeholder="예: AI, 데이터, 시스템 구축">
+      </label>
+      <label>제외 키워드
+        <input type="text" id="condExclude" placeholder="예: 폐기물, 청소, 인쇄">
+      </label>
+
+      <div>
+        <span class="hint" style="display:block;margin:2px 0 6px;font-weight:700;color:var(--text-2)">지역</span>
+        <div class="checks" id="regionChecks"></div>
+      </div>
+      <div>
+        <span class="hint" style="display:block;margin:2px 0 6px;font-weight:700;color:var(--text-2)">분야</span>
+        <div class="checks" id="categoryChecks"></div>
+      </div>
+
+      <div>
+        <span class="hint" style="display:block;margin:2px 0 6px;font-weight:700;color:var(--text-2)">알림 시점</span>
+        <div class="checks">
+          <label><input type="checkbox" class="stage" value="3" checked> 마감 3일 전</label>
+          <label><input type="checkbox" class="stage" value="1" checked> 마감 1일 전</label>
+          <label><input type="checkbox" id="condEnabled" checked> 이 조건 사용</label>
+        </div>
+      </div>
+
+      <div class="row-actions">
+        <button class="btn btn-primary" type="submit" id="condSubmit">저장</button>
+        <button class="btn btn-ghost" type="button" id="condCancel">취소</button>
+        <span class="status" id="condMsg"></span>
+      </div>
+    </form>
+  </section>
+
+  <!-- ------------------------------------------------ 알림 이력 -->
+  <section class="card" id="history">
+    <div class="settings-head">
+      <div>
+        <h2>알림 이력</h2>
+        <p>실제로 디스코드에 발송된 기록입니다. (최근 40건)</p>
+      </div>
+      <button class="btn btn-ghost btn-sm" id="refreshHistory" type="button">새로고침</button>
+    </div>
+    <div id="historyBody">
+      <p class="history-empty">불러오는 중…</p>
+    </div>
+  </section>
+
+  <!-- ------------------------------------------------ 계정 정보 -->
+  <section class="card" id="accountCard">
+    <div class="settings-head">
+      <div>
+        <h2>계정 정보</h2>
+        <p>청구·안내에 사용할 정보입니다.</p>
+      </div>
+    </div>
+    <div class="field-grid">
+      <label>이메일 (로그인)
+        <input type="email" id="acctEmail" readonly>
+      </label>
+      <label>회사명
+        <input type="text" id="acctCompany" maxlength="80">
+      </label>
+      <label>담당자
+        <input type="text" id="acctName" maxlength="40">
+      </label>
+      <label>연락처
+        <input type="tel" id="acctPhone" maxlength="40">
+      </label>
+    </div>
+    <div class="row-actions">
+      <button class="btn btn-primary" id="saveAccount" type="button">저장</button>
+      <span class="status" id="acctMsg"></span>
+    </div>
+  </section>
+
+  <!-- ------------------------------------------------ 비밀번호 -->
+  <section class="card" id="passwordCard">
+    <div class="settings-head">
+      <div>
+        <h2>비밀번호 변경</h2>
+        <p>8자 이상. 변경하면 다른 기기의 로그인은 모두 해제됩니다.</p>
+      </div>
+    </div>
+    <div class="field-grid">
+      <label>현재 비밀번호
+        <input type="password" id="pwCurrent" autocomplete="current-password">
+      </label>
+      <label>새 비밀번호
+        <input type="password" id="pwNew" autocomplete="new-password" minlength="8">
+      </label>
+      <label>새 비밀번호 확인
+        <input type="password" id="pwConfirm" autocomplete="new-password" minlength="8">
+      </label>
+    </div>
+    <div class="row-actions">
+      <button class="btn btn-primary" id="savePassword" type="button">변경</button>
+      <span class="status" id="pwMsg"></span>
+    </div>
+  </section>
+
+  <p class="auth-note" style="text-align:left;margin:4px 0 0">
+    <a href="/app">← 대시보드로</a> · <a href="/logout">로그아웃</a> ·
+    <a href="/terms">이용약관</a> · <a href="/privacy">개인정보처리방침</a>
+  </p>
+</main>
+
+<script src="/settings.js?v=20261116a" defer></script>
+</body>
+</html>
